@@ -5,6 +5,7 @@
       <RangePrice
         :form-value="formValue"
         :settlement-plan="settlementPlan"
+        ref="smallRef"
       />
     </div>
     <div class="border-amber-300 border-2 my-5 p-3 rounded-2xl flex flex-col gap-4">
@@ -24,27 +25,53 @@
     <div class="border-amber-300 border-2 my-5 p-3 rounded-2xl flex flex-col gap-4">
       <p>饲料总重量: {{ totalConcentrateWeight }}kg</p>
       <p>进苗总重量: {{ totalBuyPigWeight.totalWeight }}kg</p>
-      <p>进苗总头数: {{ totalBuyPigWeight.totalNum }}kg</p>
+      <p>进苗总头数: {{ totalBuyPigWeight.totalNum }}头</p>
       <p>进苗均重: {{ totalSalePigWeight }}kg</p>
       <p>销售总重量: {{ saleWeight }}kg</p>
       <p>销售均重: {{ saleAverageWeight }}kg</p>
       <p>基准加权料比: {{ weightedFeedRatio }}</p>
       <p>调整之后标准料比: {{ standardFeedRatio }}</p>
       <p>实际料比: {{ actualFeedRatio }}</p>
-      <p class="text-red-700">料比奖励金额: {{ feedRatioReward }}</p>
+      <p class="text-red-700">
+        料比奖励金额: {{ feedRatioReward ? feedRatioReward : '无料比奖励' }}
+      </p>
+    </div>
+    <div class="border-amber-300 border-2 my-5 p-3 rounded-2xl flex flex-col gap-4">
+      <p>饲料运费: {{ totalTransportMoney }}元</p>
+      <p>猪苗运费: {{ totalPigTranspotMoney }}元</p>
+      <p class="text-red-700">总运费: {{ totalTranportMoney }}元</p>
+    </div>
+    <div class="m-5">
+      <a-button
+        type="primary"
+        @click="handleCulate"
+      >
+        计算结算总金额
+      </a-button>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed, watchEffect } from 'vue'
+import { computed, watchEffect, ref } from 'vue'
+import { message, Modal } from 'ant-design-vue'
 import { allPlans, baseFeedRatio } from '@/config/contract-info'
 import RangePrice from '@/components/range-price.vue'
 import { breedType, totalPigWeightMapper } from '@/views/Home/form-fields'
+
+const smallRef = ref(null)
 const props = defineProps({
   formValue: {
     type: Object,
     default: () => ({})
+  },
+  tableData: {
+    type: Array,
+    default: () => []
+  },
+  validateStatus: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -234,7 +261,9 @@ const actualFeedRatio = computed(() => {
   // const { saleWeight } = props.formValue
   const { totalWeight } = totalBuyPigWeight.value
   const res =
-    saleWeight.value && totalWeight ? totalConcentrateWeight.value / (saleWeight.value - totalWeight) : 0
+    saleWeight.value && totalWeight
+      ? totalConcentrateWeight.value / (saleWeight.value - totalWeight)
+      : 0
   return Number(res).toFixed(5)
 })
 
@@ -252,12 +281,65 @@ const feedRatioReward = computed(() => {
     const res = lessFeed * 2.5
     return actual && standard && totalSaleWeight && buyTotalWeight ? res.toFixed(5) : 0
   } else {
-    return '无料比奖励'
+    return 0
   }
 })
 
+// 计算饲料总运费
+const totalTransportMoney = computed(() => {
+  console.log('表格数据=======》', props.tableData)
+
+  const res = props.tableData.reduce((total, item) => {
+    return total + item.totalPrice
+  }, 0)
+  return res.toFixed(5)
+})
+
+// 计算猪苗总运费
+const totalPigTranspotMoney = computed(() => {
+  const res = Number(totalBuyPigWeight.value.totalNum) * 2
+  return res.toFixed(5)
+})
+
+// 计算总运费
+const totalTranportMoney = computed(() => {
+  return Number(Number(totalTransportMoney.value) + Number(totalPigTranspotMoney.value)).toFixed(5)
+})
+
+// 计算结算总金额
+function handleCulate() {
+  const transportFee = Number(totalTransportMoney.value)
+  if (!props.validateStatus) {
+    message.error('请先填写完整信息')
+  } else if (!transportFee) {
+    message.error('请先填写运输费用')
+  } else {
+    const finallyMoney =
+      Number(totalRecyclePrice.value) -
+      Number(smallRef.value.totalBreedCost) -
+      Number(totalConcentrateMoney.value) +
+      Number(feedRatioReward.value) -
+      Number(totalTranportMoney.value)
+    console.log(
+      totalRecyclePrice.value,
+      smallRef.value.totalBreedCost,
+      totalConcentrateMoney.value,
+      feedRatioReward.value,
+      totalTranportMoney.value
+    )
+    Modal.success({
+      content: `结算总金额为：${finallyMoney}`
+    })
+  }
+}
+
 watchEffect(() => {
   console.log('totalSaleNum', totalSaleNum.value)
+})
+
+defineExpose({
+  totalBuyPigWeight,
+  saleWeight
 })
 </script>
 

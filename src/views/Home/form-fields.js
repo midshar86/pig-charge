@@ -12,6 +12,7 @@ function validatePrice(msg) {
   return [generalRules(msg)]
 }
 
+// 苗种及饲料配置
 export const formOptions = {
   fields: [
     {

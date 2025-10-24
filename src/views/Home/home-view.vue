@@ -1,15 +1,30 @@
 <template>
   <div class="flex gap-10">
     <div class="flex-1">
-      <DynamicForm
-        ref="dyFormRef"
-        v-model:value="formValue"
-        :config="config"
-        @on-submit="handleSubmit"
-      />
+      <div class="flex my-4 flex-col gap-10 border-2 box-border p-4 rounded-2xl border-orange-500">
+        <div class="font-bold text-red-700 text-3xl">苗种及饲料总成本计算:</div>
+        <DynamicForm
+          ref="dyFormRef1"
+          v-model:value="formValue1"
+          :config="config"
+          @on-submit="handleSubmit"
+        />
+      </div>
+      <div class="flex my-4 flex-col gap-10 border-2 box-border p-4 rounded-2xl border-orange-500">
+        <div class="font-bold text-red-700 text-3xl">饲料运费总成本计算:</div>
+        <EditableTable
+          v-model:data-source="tableSource"
+          :columns="tableColumns"
+        />
+      </div>
     </div>
     <div class="flex-1">
-      <DetailInfo :form-value="formValue" />
+      <DetailInfo
+        ref="infoRef"
+        :form-value="formValue1"
+        :table-data="tableSource"
+        :validate-status="validateStatus"
+      />
     </div>
   </div>
 </template>
@@ -18,11 +33,17 @@
 import { ref, watch } from 'vue'
 import DynamicForm from '@/components/dynamic-form.vue'
 import DetailInfo from '@/components/detail-info.vue'
+import EditableTable from '@/components/editable-table.vue'
 import { formOptions, initialForm, breedType } from './form-fields'
+import { tableColumns, distanceType, dataSource } from './transport-fields'
 import { cloneDeep } from 'lodash'
 import { message } from 'ant-design-vue'
-const formValue = ref(cloneDeep(initialForm))
-const dyFormRef = ref(null)
+const formValue1 = ref(cloneDeep(initialForm))
+const dyFormRef1 = ref(null)
+const infoRef = ref(null)
+const validateStatus = ref(false)
+
+const tableSource = ref(cloneDeep(dataSource))
 
 const config = ref(cloneDeep(formOptions))
 
@@ -43,7 +64,7 @@ function validateForm() {
     dlySaleAmount,
     binSaleAmount,
     trdSaleAmount
-  } = formValue.value
+  } = formValue1.value
   if (!dk2BuyNumber && !dlyBuyNumber && !binBuyNumber && !trdBuyNumber) {
     message.error('至少有一个猪苗数量不为空!')
     return false
@@ -60,15 +81,37 @@ function validateForm() {
     return false
   } else if (!dk2SaleAmount && !dlySaleAmount && !binSaleAmount && !trdSaleAmount) {
     message.error('至少有一个销售数量不为空!')
-  } else {
-    return true
+    return false
   }
+  for (let i = 0; i < breedType.length; i++) {
+    const item = breedType[i]
+    if (formValue1.value[item.buyNumberKey] < formValue1.value[item.salesAmountKey]) {
+      message.error(`${item.label}销售数量不能大于进苗数量`)
+      return false
+    }
+  }
+  if (infoRef.value.saleWeight < Number(infoRef.value.totalBuyPigWeight.totalWeight)) {
+    message.error(`销售重量不能小于总进苗重量`)
+    return false
+  }
+  message.success('苗种及饲料成本校验通过!')
+  return true
 }
 
 function handleSubmit() {
-  console.log('表单数据=======', formValue.value)
+  console.log('表单数据=======', formValue1.value, validateStatus.value)
   const res = validateForm()
-  res && dyFormRef.value.formRef.validate()
+  res &&
+    dyFormRef1.value.formRef
+      .validate()
+      .then(() => {
+        validateStatus.value = true
+        console.log('校验通过')
+      })
+      .catch(err => {
+        validateStatus.value = false
+        message.error('校验失败')
+      })
 }
 
 // 动态显示隐藏input
@@ -97,13 +140,13 @@ function dynamicAverageWeight(nv) {
   // 清空数量时，清空进苗均重与销售重量与销售数量
   tempList.forEach(({ buyAverageWeightKey, value, salesAmountKey }) => {
     if (!value) {
-      formValue.value[buyAverageWeightKey] = null
-      formValue.value[salesAmountKey] = null
+      formValue1.value[buyAverageWeightKey] = null
+      formValue1.value[salesAmountKey] = null
     }
   })
 }
 watch(
-  () => formValue.value,
+  () => formValue1.value,
   nv => {
     dynamicAverageWeight(nv)
   },

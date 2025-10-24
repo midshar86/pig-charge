@@ -25,7 +25,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, inject, provide } from 'vue'
 import { breedType } from '@/views/Home/form-fields'
 const props = defineProps({
   formValue: {
@@ -85,6 +85,10 @@ const totalBreedCost = computed(() => {
     return total + acc
   }, 0)
   return res.toFixed(5)
+})
+
+defineExpose({
+  totalBreedCost
 })
 </script>
 
