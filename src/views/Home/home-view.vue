@@ -1,22 +1,35 @@
 <template>
   <div class="flex gap-10">
     <div class="flex-1">
-      <div class="flex my-4 flex-col gap-10 border-2 box-border p-4 rounded-2xl border-orange-500">
-        <div class="font-bold text-red-700 text-3xl">苗种及饲料总成本计算:</div>
+      <SectionTitle title="苗种及饲料总成本计算">
         <DynamicForm
           ref="dyFormRef1"
           v-model:value="formValue1"
           :config="config"
           @on-submit="handleSubmit"
         />
-      </div>
-      <div class="flex my-4 flex-col gap-10 border-2 box-border p-4 rounded-2xl border-orange-500">
-        <div class="font-bold text-red-700 text-3xl">饲料运费总成本计算:</div>
+      </SectionTitle>
+      <SectionTitle title="饲料运费总成本计算">
         <EditableTable
           v-model:data-source="tableSource"
           :columns="tableColumns"
         />
-      </div>
+      </SectionTitle>
+      <SectionTitle title="其他扣除费用">
+        <DynamicForm
+          ref="dyFormRef2"
+          v-model:value="formValue2"
+          :config="otherCostFields"
+          :show-footer="false"
+        />
+      </SectionTitle>
+      <SectionTitle title="其他奖补费用">
+        <DynamicForm
+          v-model:value="formValue3"
+          :config="otherRewardFields"
+          :show-footer="false"
+        />
+      </SectionTitle>
     </div>
     <div class="flex-1">
       <DetailInfo
@@ -24,6 +37,9 @@
         :form-value="formValue1"
         :table-data="tableSource"
         :validate-status="validateStatus"
+        :other-cost="formValue2"
+        :other-reward="formValue3"
+        @on-culate="handleCulate"
       />
     </div>
   </div>
@@ -31,21 +47,30 @@
 
 <script setup>
 import { ref, watch } from 'vue'
+import SectionTitle from '@/components/section-title.vue'
 import DynamicForm from '@/components/dynamic-form.vue'
 import DetailInfo from '@/components/detail-info.vue'
 import EditableTable from '@/components/editable-table.vue'
 import { formOptions, initialForm, breedType } from './form-fields'
-import { tableColumns, distanceType, dataSource } from './transport-fields'
+import { tableColumns, dataSource } from './transport-fields'
+import {
+  otherCostFields,
+  otherCostFormData,
+  otherRewardFields,
+  otherRewardFormData
+} from './other-fields'
 import { cloneDeep } from 'lodash'
-import { message } from 'ant-design-vue'
-const formValue1 = ref(cloneDeep(initialForm))
+import { message, Modal } from 'ant-design-vue'
+const formValue1 = ref(cloneDeep(initialForm)) // 苗种及饲料总成本计算表单
+const formValue2 = ref(cloneDeep(otherCostFormData)) // 其他扣除费用表单
+const formValue3 = ref(cloneDeep(otherRewardFormData)) // 其他奖励费用表单
 const dyFormRef1 = ref(null)
+const dyFormRef2 = ref(null)
 const infoRef = ref(null)
-const validateStatus = ref(false)
+const validateStatus = ref(false) // 苗种及饲料总成本表单整体校验状态
 
-const tableSource = ref(cloneDeep(dataSource))
-
-const config = ref(cloneDeep(formOptions))
+const tableSource = ref(cloneDeep(dataSource)) // 饲料运费总成本计算表格
+const config = ref(cloneDeep(formOptions)) // 苗种及饲料总成本计算表单配置
 
 // 执行校验函数
 function validateForm() {
@@ -100,8 +125,8 @@ function validateForm() {
 
 function handleSubmit() {
   console.log('表单数据=======', formValue1.value, validateStatus.value)
-  const res = validateForm()
-  res &&
+  const res1 = validateForm()
+  res1 &&
     dyFormRef1.value.formRef
       .validate()
       .then(() => {
@@ -112,6 +137,26 @@ function handleSubmit() {
         validateStatus.value = false
         message.error('校验失败')
       })
+}
+
+function handleCulate(payload) {
+  const { transportFee, finallyMoney } = payload
+  if (!validateStatus.value) {
+    message.error('请先填写完整信息')
+  } else if (!transportFee) {
+    message.error('请先填写运输费用')
+  } else {
+    dyFormRef2.value.formRef
+      .validate()
+      .then(() => {
+        Modal.success({
+          content: `结算总金额为：${finallyMoney}`
+        })
+      })
+      .catch(() => {
+        message.error('请先填写疫苗总成本')
+      })
+  }
 }
 
 // 动态显示隐藏input

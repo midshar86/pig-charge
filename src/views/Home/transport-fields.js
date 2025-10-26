@@ -2,12 +2,12 @@ export const tableColumns = [
   {
     title: '类型',
     dataIndex: 'type',
-    width: '25%'
+    width: '40%'
   },
   {
     title: '计算里程(km)',
     dataIndex: 'distance',
-    width: '20%'
+    width: '10%'
   },
   {
     title: '运输单价(元/t/km)',
@@ -17,12 +17,12 @@ export const tableColumns = [
   {
     title: '运输重量(t)',
     dataIndex: 'weight',
-    width: '20%'
+    width: '10%'
   },
   {
     title: '计算价格(元)',
     dataIndex: 'totalPrice',
-    width: '20%',
+    width: '30%',
     calc: (col, cb = () => {}) => {
       const res = col.price * col.weight * col.distance
       cb(res)

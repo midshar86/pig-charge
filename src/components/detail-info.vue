@@ -1,28 +1,32 @@
 <template>
   <div class="wrap">
     <p>结算方案: {{ settlementPlan.text }}</p>
-    <div class="border-amber-300 border-2 my-5 p-3 rounded-2xl flex flex-col gap-4">
+    <DetailInfoBox>
       <RangePrice
+        ref="smallRef"
         :form-value="formValue"
         :settlement-plan="settlementPlan"
-        ref="smallRef"
       />
-    </div>
-    <div class="border-amber-300 border-2 my-5 p-3 rounded-2xl flex flex-col gap-4">
+    </DetailInfoBox>
+    <DetailInfoBox>
       <p>代乳康金额: {{ dairyConcentrateMoney }}元</p>
       <p>乳猪康金额: {{ pigletConcentrateMoney }}元</p>
       <p>仔猪康金额: {{ childrenPigConcentrateMoney }}元</p>
       <p>德康2号金额: {{ decon2ConcentrateMoney }}元</p>
       <p>德康3号金额: {{ decon3ConcentrateMoney }}元</p>
       <p>德康4号金额: {{ decon4ConcentrateMoney }}元</p>
-      <p class="text-red-700">饲料总成本: {{ totalConcentrateMoney }}</p>
-    </div>
-    <div class="border-amber-300 border-2 my-5 p-3 rounded-2xl flex flex-col gap-4">
+      <p class="text-red-700">
+        饲料总成本: {{ totalConcentrateMoney }}
+      </p>
+    </DetailInfoBox>
+    <DetailInfoBox>
       <p>回收正价: {{ normolRecyclePrice }}</p>
       <p>回收次价: {{ defectiveRecyclePrice }}</p>
-      <p class="text-red-700">回收总价: {{ totalRecyclePrice }}</p>
-    </div>
-    <div class="border-amber-300 border-2 my-5 p-3 rounded-2xl flex flex-col gap-4">
+      <p class="text-red-700">
+        回收总价: {{ totalRecyclePrice }}
+      </p>
+    </DetailInfoBox>
+    <DetailInfoBox>
       <p>饲料总重量: {{ totalConcentrateWeight }}kg</p>
       <p>进苗总重量: {{ totalBuyPigWeight.totalWeight }}kg</p>
       <p>进苗总头数: {{ totalBuyPigWeight.totalNum }}头</p>
@@ -35,12 +39,37 @@
       <p class="text-red-700">
         料比奖励金额: {{ feedRatioReward ? feedRatioReward : '无料比奖励' }}
       </p>
-    </div>
-    <div class="border-amber-300 border-2 my-5 p-3 rounded-2xl flex flex-col gap-4">
+    </DetailInfoBox>
+    <DetailInfoBox>
       <p>饲料运费: {{ totalTransportMoney }}元</p>
       <p>猪苗运费: {{ totalPigTranspotMoney }}元</p>
-      <p class="text-red-700">总运费: {{ totalTranportMoney }}元</p>
-    </div>
+      <p class="text-red-700">
+        总运费: {{ totalTranportMoney }}元
+      </p>
+    </DetailInfoBox>
+    <DetailInfoBox>
+      <p
+        v-for="(itm, idx) in otherCostMapper"
+        :key="idx"
+      >
+        {{ itm.label }}: {{ otherCost[itm.key] ? otherCost[itm.key].toFixed(5) : (0).toFixed(5) }}元
+      </p>
+      <p class="text-red-700">
+        其他扣除费用总额: {{ totalOtherCost.toFixed(5) }}元
+      </p>
+    </DetailInfoBox>
+    <DetailInfoBox>
+      <p
+        v-for="(itm, idx) in otherRewardMapper"
+        :key="idx"
+      >
+        {{ itm.label }}:
+        {{ otherReward[itm.key] ? otherReward[itm.key].toFixed(5) : (0).toFixed(5) }}元
+      </p>
+      <p class="text-red-700">
+        其他奖补费用总额: {{ totalOtherReward.toFixed(5) }}元
+      </p>
+    </DetailInfoBox>
     <div class="m-5">
       <a-button
         type="primary"
@@ -54,24 +83,38 @@
 
 <script setup>
 import { computed, watchEffect, ref } from 'vue'
-import { message, Modal } from 'ant-design-vue'
+import DetailInfoBox from './detail-info-box.vue'
+import { otherCostMapper, otherRewardMapper } from '@/views/Home/other-fields'
 import { allPlans, baseFeedRatio } from '@/config/contract-info'
 import RangePrice from '@/components/range-price.vue'
 import { breedType, totalPigWeightMapper } from '@/views/Home/form-fields'
-
+const emits = defineEmits(['onCulate'])
 const smallRef = ref(null)
 const props = defineProps({
+  // 苗种及饲料总成本
   formValue: {
     type: Object,
     default: () => ({})
   },
+  // 饲料运费及猪苗运费
   tableData: {
     type: Array,
     default: () => []
   },
+  // 苗种及饲料总成本表单校验逻辑
   validateStatus: {
     type: Boolean,
     default: false
+  },
+  // 其他扣除费用
+  otherCost: {
+    type: Object,
+    default: () => ({})
+  },
+  // 其他奖补费用
+  otherReward: {
+    type: Object,
+    default: () => ({})
   }
 })
 
@@ -253,7 +296,7 @@ const weightedFeedRatio = computed(() => {
 const standardFeedRatio = computed(() => {
   const range = (Number(saleAverageWeight.value) - 120) * 0.005
   const res = Number(weightedFeedRatio.value) + range
-  return saleAverageWeight.value ? res.toFixed(5) : 0
+  return saleAverageWeight.value ? res.toFixed(5) : (0).toFixed(5)
 })
 
 // 计算实际料比
@@ -306,31 +349,40 @@ const totalTranportMoney = computed(() => {
   return Number(Number(totalTransportMoney.value) + Number(totalPigTranspotMoney.value)).toFixed(5)
 })
 
+// 计算其他扣除费用总金额
+const totalOtherCost = computed(() => {
+  const copyOtherForm = Object.entries(props.otherCost).map(([_, val]) => {
+    return val ? val : 0
+  })
+  return copyOtherForm.reduce((total, item) => {
+    return total + item
+  }, 0)
+})
+// 计算其他奖励总金额
+const totalOtherReward = computed(() => {
+  const copyOtherForm = Object.entries(props.otherReward).map(([_, val]) => {
+    return val ? val.toFixed(5) : (0).toFixed(5)
+  })
+  return copyOtherForm.reduce((total, item) => {
+    return total + Number(item)
+  }, 0)
+})
+
 // 计算结算总金额
 function handleCulate() {
-  const transportFee = Number(totalTransportMoney.value)
-  if (!props.validateStatus) {
-    message.error('请先填写完整信息')
-  } else if (!transportFee) {
-    message.error('请先填写运输费用')
-  } else {
-    const finallyMoney =
-      Number(totalRecyclePrice.value) -
-      Number(smallRef.value.totalBreedCost) -
-      Number(totalConcentrateMoney.value) +
-      Number(feedRatioReward.value) -
-      Number(totalTranportMoney.value)
-    console.log(
-      totalRecyclePrice.value,
-      smallRef.value.totalBreedCost,
-      totalConcentrateMoney.value,
-      feedRatioReward.value,
-      totalTranportMoney.value
-    )
-    Modal.success({
-      content: `结算总金额为：${finallyMoney}`
-    })
+  const finallyMoney =
+    Number(totalRecyclePrice.value) -
+    Number(smallRef.value.totalBreedCost) -
+    Number(totalConcentrateMoney.value) +
+    Number(feedRatioReward.value) -
+    Number(totalTranportMoney.value)-
+    Number(totalOtherCost.value) +
+    Number(totalOtherReward.value)
+  const payload = {
+    transportFee: Number(totalTransportMoney.value),
+    finallyMoney
   }
+  emits('onCulate', payload)
 }
 
 watchEffect(() => {

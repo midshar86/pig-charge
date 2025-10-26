@@ -8,7 +8,7 @@ function generalRules(msg, trigger = 'blur') {
 }
 
 // 校验数字
-function validatePrice(msg) {
+export function validatePrice(msg) {
   return [generalRules(msg)]
 }
 
@@ -283,15 +283,15 @@ export const formOptions = {
 }
 
 // 根据配置创建表单字段
-function _createFormFields() {
-  return formOptions.fields.reduce((form, field) => {
+export function _createFormFields(formFiels={}) {
+  return formFiels.fields.reduce((form, field) => {
     form[field.prop] = null
     return form
   }, {})
 }
 
 // 表单初始字段
-export const initialForm = _createFormFields()
+export const initialForm = _createFormFields(formOptions)
 
 // 猪苗类型
 // 格式：[{label:'', pigType: '', buyNumberKey: '', buyAverageWeightKey: '', salesAmountKey: ''}]

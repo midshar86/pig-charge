@@ -6,7 +6,7 @@ import tailwindcss from '@tailwindcss/vite'
 // import { viteSingleFile } from 'vite-plugin-singlefile';
 // https://vite.dev/config/
 export default defineConfig({
-  base: process.env.NODE_ENV === "production" ? "/pig-charge" : "/",
+  base: process.env.NODE_ENV === "production" ? "/pig-charge" : "/", // 部署到 GitHub Pages 上时，需要设置 base
   plugins: [
     // viteSingleFile(),
     vue(),

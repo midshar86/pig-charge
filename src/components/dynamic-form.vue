@@ -57,7 +57,10 @@
           </a-col>
         </template>
         <!-- 表单提交/重置按钮 -->
-        <a-col :span="24">
+        <a-col
+          v-if="showFooter"
+          :span="24"
+        >
           <a-form-item>
             <div class="flex gap-5">
               <a-button
@@ -95,6 +98,11 @@ const props = defineProps({
   config: {
     type: Object,
     default: () => ({})
+  },
+  // 是否展示底部的表单提交与重置按钮
+  showFooter: {
+    type: Boolean,
+    default: true
   }
 })
 console.log('props========', props)
