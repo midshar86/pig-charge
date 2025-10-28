@@ -1,6 +1,14 @@
 <template>
   <div class="wrap">
-    <p>结算方案: {{ settlementPlan.text }}</p>
+    <p class="flex items-center justify-between">
+      <span>结算方案: {{ settlementPlan.text }}</span>
+      <a-button
+        type="primary"
+        @click="handleExport"
+      >
+        导出计算数据
+      </a-button>
+    </p>
     <DetailInfoBox>
       <RangePrice
         ref="smallRef"
@@ -31,7 +39,7 @@
       <p>进苗总重量: {{ totalBuyPigWeight.totalWeight }}kg</p>
       <p>进苗总头数: {{ totalBuyPigWeight.totalNum }}头</p>
       <p>进苗均重: {{ totalSalePigWeight }}kg</p>
-      <p>销售总重量: {{ saleWeight }}kg</p>
+      <p>销售总重量: {{ saleWeight.toFixed(5) }}kg</p>
       <p>销售均重: {{ saleAverageWeight }}kg</p>
       <p>基准加权料比: {{ weightedFeedRatio }}</p>
       <p>调整之后标准料比: {{ standardFeedRatio }}</p>
@@ -55,7 +63,7 @@
         {{ itm.label }}: {{ otherCost[itm.key] ? otherCost[itm.key].toFixed(5) : (0).toFixed(5) }}元
       </p>
       <p class="text-red-700">
-        其他扣除费用总额: {{ totalOtherCost.toFixed(5) }}元
+        其他扣除费用总额: {{ totalOtherCost }}元
       </p>
     </DetailInfoBox>
     <DetailInfoBox>
@@ -67,7 +75,7 @@
         {{ otherReward[itm.key] ? otherReward[itm.key].toFixed(5) : (0).toFixed(5) }}元
       </p>
       <p class="text-red-700">
-        其他奖补费用总额: {{ totalOtherReward.toFixed(5) }}元
+        其他奖补费用总额: {{ totalOtherReward }}元
       </p>
     </DetailInfoBox>
     <div class="m-5">
@@ -83,6 +91,7 @@
 
 <script setup>
 import { computed, watchEffect, ref } from 'vue'
+import { exportToExcel } from '@/utils/createSheet'
 import DetailInfoBox from './detail-info-box.vue'
 import { otherCostMapper, otherRewardMapper } from '@/views/Home/other-fields'
 import { allPlans, baseFeedRatio } from '@/config/contract-info'
@@ -354,35 +363,93 @@ const totalOtherCost = computed(() => {
   const copyOtherForm = Object.entries(props.otherCost).map(([_, val]) => {
     return val ? val : 0
   })
-  return copyOtherForm.reduce((total, item) => {
+  return Number(copyOtherForm.reduce((total, item) => {
     return total + item
-  }, 0)
+  }, 0)).toFixed(5)
 })
 // 计算其他奖励总金额
 const totalOtherReward = computed(() => {
   const copyOtherForm = Object.entries(props.otherReward).map(([_, val]) => {
     return val ? val.toFixed(5) : (0).toFixed(5)
   })
-  return copyOtherForm.reduce((total, item) => {
+  return Number(copyOtherForm.reduce((total, item) => {
     return total + Number(item)
-  }, 0)
+  }, 0)).toFixed(5)
 })
 
 // 计算结算总金额
+const finallyTotalMoney = ref(0)
 function handleCulate() {
   const finallyMoney =
     Number(totalRecyclePrice.value) -
     Number(smallRef.value.totalBreedCost) -
     Number(totalConcentrateMoney.value) +
     Number(feedRatioReward.value) -
-    Number(totalTranportMoney.value)-
+    Number(totalTranportMoney.value) -
     Number(totalOtherCost.value) +
     Number(totalOtherReward.value)
+  finallyTotalMoney.value = finallyMoney
   const payload = {
     transportFee: Number(totalTransportMoney.value),
     finallyMoney
   }
   emits('onCulate', payload)
+}
+
+// 点击导出数据
+function handleExport() {
+  const data = [
+    { name: '总猪苗成本', value: smallRef.value.totalBreedCost },
+    { name: '代乳康金额', value: dairyConcentrateMoney.value },
+    { name: '乳猪康金额', value: pigletConcentrateMoney.value },
+    { name: '仔猪康金额', value: childrenPigConcentrateMoney.value },
+    { name: '德康2号金额', value: decon2ConcentrateMoney.value },
+    { name: '德康3号金额', value: decon3ConcentrateMoney.value },
+    { name: '德康4号金额', value: decon4ConcentrateMoney.value },
+    { name: '饲料总成本', value: totalConcentrateMoney.value },
+    { name: '回收正价', value: normolRecyclePrice.value },
+    { name: '回收次价', value: defectiveRecyclePrice.value },
+    { name: '回收总价', value: totalRecyclePrice.value },
+    { name: '饲料总重量', value: totalConcentrateWeight.value },
+    { name: '进苗总重量', value: totalBuyPigWeight.value.totalWeight },
+    { name: '进苗总头数', value: totalBuyPigWeight.value.totalNum },
+    { name: '进苗均重', value: totalSalePigWeight.value },
+    { name: '销售总重量', value: saleWeight.value.toFixed(5) },
+    { name: '销售均重', value: saleAverageWeight.value },
+    { name: '基准加权料比', value: weightedFeedRatio.value },
+    { name: '调整之后标准料比', value: standardFeedRatio.value },
+    { name: '实际料比', value: actualFeedRatio.value },
+    { name: '料比奖励金额', value: feedRatioReward.value },
+    { name: '饲料运费', value: totalTransportMoney.value },
+    { name: '猪苗运费', value: totalPigTranspotMoney.value },
+    { name: '总运费', value: totalTranportMoney.value },
+    { name: '疫苗总成本', value: props.otherCost.vaccineCost },
+    { name: '保证金', value: props.otherCost.deposit },
+    { name: '违约金', value: props.otherCost.penalty },
+    { name: '赔偿款', value: props.otherCost.compensation },
+    { name: '其他运输费用', value: props.otherCost.otherTransportationCost },
+    { name: '补贴扣回', value: props.otherCost.subsidyRecovery },
+    { name: '借款本息', value: props.otherCost.loanInterest },
+    { name: '其他扣除费用总额', value: totalOtherCost.value },
+    { name: '其他奖励', value: props.otherReward.otherReward },
+    { name: '其他补贴', value: props.otherReward.otherSubsidy },
+    { name: '其他奖补费用总额', value: totalOtherReward.value },
+    { name: '结算总金额', value: finallyTotalMoney.value }
+  ]
+  const headerOption = [
+    { name: '类别', key: 'name' },
+    { name: '金额', key: 'value' }
+  ]
+  const formatData = data.reduce((arr, item) => {
+    const newItem = {}
+    headerOption.forEach((_, idx) => {
+      newItem[headerOption[idx].name] = item[headerOption[idx].key]
+    })
+    arr.push(newItem)
+    return arr
+  }, [])
+
+  exportToExcel(formatData)
 }
 
 watchEffect(() => {
